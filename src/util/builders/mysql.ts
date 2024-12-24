@@ -11,6 +11,7 @@ import {
 } from 'graphql';
 
 import {
+	databaseOfContext,
 	extractFilters,
 	extractOrderBy,
 	extractRelationsParams,
@@ -41,14 +42,6 @@ const generateSelectArray = (
 	filterArgs: GraphQLInputObjectType,
 ): CreatedResolver => {
 	const queryName = `${uncapitalize(tableName)}`;
-	const queryBase = db.query[tableName as keyof typeof db.query] as unknown as
-		| RelationalQueryBuilder<any, any, any>
-		| undefined;
-	if (!queryBase) {
-		throw new Error(
-			`Drizzle-GraphQL Error: Table ${tableName} not found in drizzle instance. Did you forget to pass schema to drizzle constructor?`,
-		);
-	}
 
 	const queryArgs = {
 		offset: {
@@ -77,6 +70,16 @@ const generateSelectArray = (
 				const parsedInfo = parseResolveInfo(info, {
 					deep: true,
 				}) as ResolveTree;
+
+				const dynamicDb = databaseOfContext(db, context);
+				const queryBase = dynamicDb.query[tableName as keyof typeof db.query] as unknown as
+					| RelationalQueryBuilder<any, any, any>
+					| undefined;
+				if (!queryBase) {
+					throw new Error(
+						`Drizzle-GraphQL Error: Table ${tableName} not found in drizzle instance. Did you forget to pass schema to drizzle constructor?`,
+					);
+				}
 
 				const query = queryBase.findMany({
 					columns: extractSelectedColumnsFromTree(
@@ -116,14 +119,6 @@ const generateSelectSingle = (
 	filterArgs: GraphQLInputObjectType,
 ): CreatedResolver => {
 	const queryName = `${uncapitalize(tableName)}Single`;
-	const queryBase = db.query[tableName as keyof typeof db.query] as unknown as
-		| RelationalQueryBuilder<any, any, any>
-		| undefined;
-	if (!queryBase) {
-		throw new Error(
-			`Drizzle-GraphQL Error: Table ${tableName} not found in drizzle instance. Did you forget to pass schema to drizzle constructor?`,
-		);
-	}
 
 	const queryArgs = {
 		offset: {
@@ -149,6 +144,16 @@ const generateSelectSingle = (
 				const parsedInfo = parseResolveInfo(info, {
 					deep: true,
 				}) as ResolveTree;
+
+				const dynamicDb = databaseOfContext(db, context);
+				const queryBase = dynamicDb.query[tableName as keyof typeof db.query] as unknown as
+					| RelationalQueryBuilder<any, any, any>
+					| undefined;
+				if (!queryBase) {
+					throw new Error(
+						`Drizzle-GraphQL Error: Table ${tableName} not found in drizzle instance. Did you forget to pass schema to drizzle constructor?`,
+					);
+				}
 
 				const query = queryBase.findFirst({
 					columns: extractSelectedColumnsFromTree(
@@ -200,7 +205,8 @@ const generateInsertArray = (
 				const input = remapFromGraphQLArrayInput(args.values, table);
 				if (!input.length) throw new GraphQLError('No values were provided!');
 
-				await db.insert(table).values(input);
+				const dynamicDb = databaseOfContext(db, context);
+				await dynamicDb.insert(table).values(input);
 
 				return { isSuccess: true };
 			} catch (e) {
@@ -235,7 +241,8 @@ const generateInsertSingle = (
 			try {
 				const input = remapFromGraphQLSingleInput(args.values, table);
 
-				await db.insert(table).values(input);
+				const dynamicDb = databaseOfContext(db, context);
+				await dynamicDb.insert(table).values(input);
 
 				return { isSuccess: true };
 			} catch (e) {
@@ -277,7 +284,8 @@ const generateUpdate = (
 				const input = remapFromGraphQLSingleInput(set, table);
 				if (!Object.keys(input).length) throw new GraphQLError('Unable to update with no values specified!');
 
-				let query = db.update(table).set(input);
+				const dynamicDb = databaseOfContext(db, context);
+				let query = dynamicDb.update(table).set(input);
 				if (where) {
 					const filters = extractFilters(table, tableName, where);
 					query = query.where(filters) as any;
@@ -318,7 +326,8 @@ const generateDelete = (
 			try {
 				const { where } = args;
 
-				let query = db.delete(table);
+				const dynamicDb = databaseOfContext(db, context);
+				let query = dynamicDb.delete(table);
 				if (where) {
 					const filters = extractFilters(table, tableName, where);
 					query = query.where(filters) as any;

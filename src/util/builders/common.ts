@@ -381,6 +381,14 @@ const generateSelectFields = <TWithOrder extends boolean>(
 	return { order, filters, tableFields, relationFields } as SelectData<TWithOrder>;
 };
 
+export const database = Symbol('database');
+export const databaseOfContext = <TDatabase>(
+	db: TDatabase,
+	context: { [database]?: NoInfer<TDatabase> },
+): TDatabase => {
+	return context?.[database] ?? db;
+};
+
 export const generateTableTypes = <
 	WithReturning extends boolean,
 >(
